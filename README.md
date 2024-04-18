@@ -25,15 +25,17 @@ TODOs
 
 1. Clone this repository to your local machine:
 
-git clone https://github.com/metao1/drumming-collaborative-dashboard
-
+```
+git clone https://github.com/metao1/drumming
+```
 2. Navigate to the project directory:
-
+```
 cd drumming-collaborative-dashboard
-
+```
 3. Install dependencies for the Go server:
 
 ### Assuming you have Go installed
+
 ```
 go get -u ./...
 ```
