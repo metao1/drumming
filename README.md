@@ -2,7 +2,7 @@
 
 ***Currently WIP***
 
-[logo](OIG1.jpeg) 
+![logo](OIG1.jpeg) 
 
 Drumming is a collaborative dashboard designed to showcase drumming behavior in birds, particularly of sticky notes updating on real-time on a dashboard.
 
