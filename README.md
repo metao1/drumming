@@ -13,13 +13,13 @@ Go server backend and a frontend built with the latest version of React.
 
 Done
 
-- ([X])Visualization of sticky notes on a collaborative dashboard.
-- ([X])Real-time updates of mouse cursor.
+- [x] Visualization of sticky notes on a collaborative dashboard.
+- [x] Real-time updates of mouse cursor.
 
 TODOs
-- ([X])Real-time updates of sticky notes activity.
-- ([]) Interactive charts and graphs to analyze drumming patterns.
-- ([]) User-friendly interface for easy collaboration and data interpretation.
+- [x] Real-time updates of sticky notes activity.
+- [] Interactive charts and graphs to analyze drumming patterns.
+- [] User-friendly interface for easy collaboration and data interpretation.
 
 ### Installation
 
