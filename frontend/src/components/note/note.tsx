@@ -16,13 +16,13 @@ type PropsType = {
   existingNotes?: Array<NotesType>
   text: string
   owner?:string
-  onMouseMove?: (position: any) => any
+  onCardMoved?: (position: any) => any
 }
 
 const Note = ({
   id,
   onClose,
-  onMouseMove,
+  onCardMoved: onMouseMove,
   randomColor,
   position,
   existingNotes,

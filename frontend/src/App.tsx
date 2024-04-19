@@ -20,10 +20,7 @@ import { Toolbar } from 'components/toolbar/toolbar'
 
 const THROTTLE = 100, WS_URL = 'ws://localhost:8000/ws'
 const socket = new WebSocket(WS_URL);
-
-socket.addEventListener("open", event => {  
-  console.log('websocket connection established')
-});
+const userId = uuidv4()
 
 function App() {
   const { sendJsonMessage, lastJsonMessage} = useWebSocket(WS_URL, {      
@@ -40,64 +37,50 @@ function App() {
   
   const [notes, setNotes] = useState<Array<NotesType>>([])
 
-  const [username, setUsername] = useState<string>("")
+  const noteDB = new Map<string, NotesType>();
+
+  const [dragging, setDragging] = useState({ id: "", x: 0, y: 0 })
 
   let hasLoaded = false
 
-  const renderCursors = (mouse:any) => {    
-    if(mouse && JSON.parse(mouse).card && JSON.parse(mouse).card !== username) {      
+  const renderCursors = (mouse:any) => {        
+    let data = JSON.parse(mouse)
+    if(data && data.userId !== userId) {
       return (
-        <Cursor point={[JSON.parse(mouse).x, JSON.parse(mouse).y]} />
-      )
-    }    
-  }
-
-  const renderOtherNotes = (mouse:any) => {
-    if(mouse && mouse.card && mouse.card !== username) {
-      console.log('new card added')
-      return (
-      <Note
-            key={mouse.card}
-            id={mouse.card}
-            randomColor={generateRandomHexColor()}
-            position={generateCardRandomPosition()}          
-            text={mouse.card}         
-        />
+        <Cursor point={[data.x, data.y]} />
       )
     }    
   }
 
   useEffect(() => {
-    const existingNotes = getStorageItem('notes')
-    
+    const existingNotes = getStorageItem('notes')    
     if (!hasLoaded && existingNotes) {
       setNotes(existingNotes)
       // eslint-disable-next-line react-hooks/exhaustive-deps
       hasLoaded = true
-    }    
-    sendJsonMessage({
-      x: 0,
-      y: 0,
-      card: username
+    }
+    socket.addEventListener("message", event=> {
+      if(event.data) {
+        //console.log(event)
+      }
     })
-    
+    socket.addEventListener("open", event => {  
+      console.log('websocket connection established')
+    });
     window.addEventListener("mousemove", (e) => {   
-      //sendJsonMessageThrottled.current({x: e.clientX,y: e.clientY, card: username})            
-      sendJsonMessage({
-        x: e.clientX,
-        y: e.clientY,
-        card: username
-      })
+      const { x, y } = e;
+      sendJsonMessageThrottled.current({userId: userId, x: x, y:y})
     })
     // Clean up event listeners    
-    return() => socket.close()
+    
   }, [])
 
   const addNote = (): void => {
+    let id = uuidv4()
     setNotes([
       ...notes,
       {
-        id: uuidv4(),
+        id: id,
         randomColor: generateRandomHexColor(),
         position: generateCardRandomPosition(),
         text: '',
@@ -107,14 +90,19 @@ function App() {
     setStorageItem('notes', [
       ...notes,
       {
-        id: uuidv4(),
+        id: id,
         randomColor: generateRandomHexColor(),
         position: generateCardRandomPosition(),
         text: '',
       },
     ])
-    console.log(username + ' added note')
-    sendJsonMessage({x:0, y: 0,card: username});
+    noteDB.set(id, {
+        id: id,
+        randomColor: generateRandomHexColor(),
+        position: generateCardRandomPosition(),
+        text: '',
+    })
+    sendJsonMessage({id:id, x:0, y: 0});
   }
 
   const removeNote = (noteId: string): void => {
@@ -124,20 +112,21 @@ function App() {
     setStorageItem('notes', filteredNotes)
   }
   
- const handleMouseMove = (e: any) => {  
-    const { x, y } = e;      
-    setCardPosition({ x: x, y: y , card:username});
+ const handleCardMoved = (id: string, e: any) => {  
+    const { x, y, card } = e;
+    setCardPosition({ x: x, y: y , card:card});
     // Emit 'moveCard' event to the server
     sendCardPositionThrottled.current({
         x: e.clientX,
         y: e.clientY,
-        card: username
+        card: card
     })
+    setDragging({id: id, x:x, y:y})
   };
 
   return (
     <div className="app">
-      <Toolbar id='main-toolbar' addNote={addNote} setUsername={setUsername}/>
+      <Toolbar id='main-toolbar' addNote={addNote}/>
       {notes.map((item) => (
         <Note
           key={item.id}
@@ -147,16 +136,14 @@ function App() {
           onClose={() => removeNote(item.id)}
           existingNotes={notes}
           text={item.text}
-          owner={username}
-          onMouseMove={(e:any) => {              
-              handleMouseMove(e)
+          onCardMoved={(e:any) => {              
+              handleCardMoved(item.id, e)
             }
           }
         />
       ))}
     
       {renderCursors(lastJsonMessage)}
-      {renderOtherNotes(lastJsonMessage)}
     </div>
   )
 }
