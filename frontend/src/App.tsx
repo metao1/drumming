@@ -148,7 +148,7 @@ function App() {
         />
       ))}
 
-      {/* {renderCursors(lastJsonMessage)} */}
+      {renderCursors(lastJsonMessage)}
     </div>
   )
 }
