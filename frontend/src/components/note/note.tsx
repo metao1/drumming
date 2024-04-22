@@ -2,37 +2,31 @@ import { useRef, useState } from 'react'
 
 import { SelectionBackground, X } from 'phosphor-react'
 
-import type { NotesType } from 'types/notes'
-
-import { setStorageItem } from 'utils'
-
 import * as S from './styles'
 
 type PropsType = {
   id: string
   onClose?: () => void
   randomColor: string
-  position: number
-  existingNotes?: Array<NotesType>
+  position: { x: number, y: number }
   text: string
-  owner?:string
-  onCardMoved?: (position: any) => any
+  onCardMoved?: (e: any) => any
+  onCardTextChanged?: (e: any) => any
 }
 
 const Note = ({
   id,
   onClose,
   onCardMoved: onMouseMove,
+  onCardTextChanged: onCardTextChanged,
   randomColor,
   position,
-  existingNotes,
-  owner,
   text,
 }: PropsType) => {
   const [shouldAllowMove, setShouldAllowMove] = useState(false)
   const [inputValue, setInputValue] = useState<string>(text || '')
-  const [dx, setDx] = useState(0)
-  const [dy, setDy] = useState(0)
+  const [dx, setDx] = useState<number>(0)
+  const [dy, setDy] = useState<number>(0)
   const noteRef = useRef<HTMLDivElement | null>(null)
 
   const handleMouseDown = (
@@ -50,28 +44,20 @@ const Note = ({
   const handleMouseMove = (
     event: React.MouseEvent<HTMLHeadElement, MouseEvent>
   ): void => {
-    
+
     if (!shouldAllowMove || !noteRef.current) return
     const x = event.clientX - dx
     const y = event.clientY - dy
-
     noteRef.current.style.left = x + 'px'
     noteRef.current.style.top = y + 'px'
-
     if (x <= 80 && y <= 80) {
       noteRef.current.style.backgroundColor = 'red'
     } else {
       noteRef.current.style.backgroundColor = 'white'
     }
-
-    if (x <= 50 && y <= 50) {
-      if(onClose){
-        onClose()
-      }
+    if (onMouseMove) {
+      onMouseMove({ x: x, y: y, id: id })
     }
-    if(onMouseMove) {
-        onMouseMove({x: x, y: y})
-    }    
   }
 
   const handleMouseUp = (): void => {
@@ -80,15 +66,8 @@ const Note = ({
 
   const handleInputChange = (value: string): void => {
     setInputValue(value)
-    if(existingNotes){
-      const updatedNotes = existingNotes.map((item: NotesType) => {
-        if (item.id === id) {
-          item.text = value
-        }
-
-        return item
-      })
-      setStorageItem('notes', updatedNotes)
+    if (onCardTextChanged) {
+      onCardTextChanged({ id: id, text: value })
     }
   }
 
@@ -111,12 +90,15 @@ const Note = ({
       className="note"
     >
       <S.NoteHeader
+        onDragStart={(e: any) => {
+          console.log(e.clientX - position.x)
+        }}
         randomColor={randomColor}
-        onMouseDown={(event:any) => handleMouseDown(event)}
-        onMouseMove={(event:any) => handleMouseMove(event)}
+        onMouseDown={(event: any) => handleMouseDown(event)}
+        onMouseMove={(event: any) => handleMouseMove(event)}
         onMouseUp={handleMouseUp}
       >
-        <S.NoteTitle>Note{!!{owner} ?  " - " + owner: ''}</S.NoteTitle>
+        <S.NoteTitle>Note</S.NoteTitle>
 
         <S.BringToFrontAction
           onClick={bringToFront}
@@ -137,7 +119,7 @@ const Note = ({
         cols={30}
         rows={10}
         value={inputValue}
-        onChange={(e:any) => handleInputChange(e.target.value)}
+        onChange={(e: any) => handleInputChange(e.target.value)}
       />
     </S.Note>
   )

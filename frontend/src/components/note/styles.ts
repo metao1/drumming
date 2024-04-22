@@ -1,7 +1,7 @@
 import styled, { css } from 'styled-components'
 
 type NoteProps = {
-  position: number
+  position: { x: number, y: number }
 }
 
 export const Note = styled.div<NoteProps>`
@@ -10,8 +10,8 @@ export const Note = styled.div<NoteProps>`
     min-height: 200px;
     border: 3px solid #333;
     position: absolute;
-    top: ${position}%;
-    left: ${position}%;
+    top: ${position.y}%;
+    left: ${position.x}%;
   `}
 `
 

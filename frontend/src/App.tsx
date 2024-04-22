@@ -1,4 +1,4 @@
-import { useState, useEffect,useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 import { v4 as uuidv4 } from 'uuid'
 
@@ -23,110 +23,118 @@ const socket = new WebSocket(WS_URL);
 const userId = uuidv4()
 
 function App() {
-  const { sendJsonMessage, lastJsonMessage} = useWebSocket(WS_URL, {      
-      queryParams: { x: 0, y: 0, card:''},
-      share: false,
-      shouldReconnect: () => true
+  const { sendJsonMessage, lastJsonMessage } = useWebSocket(WS_URL, {
+    queryParams: { x: 0, y: 0, text: '', id: '', event: '' },
+    share: false,
+    shouldReconnect: () => true
   })
-  
+
   const sendJsonMessageThrottled = useRef(throttle(sendJsonMessage, THROTTLE))
 
-  const [cardPosition, setCardPosition] = useState({ x: 0, y: 0, card:''});
+  const sendCardUpdatedThrottled = useRef(throttle(sendJsonMessage, THROTTLE))
 
-  const sendCardPositionThrottled = useRef(throttle(sendJsonMessage, THROTTLE))    
-  
   const [notes, setNotes] = useState<Array<NotesType>>([])
 
-  const noteDB = new Map<string, NotesType>();
-
-  const [dragging, setDragging] = useState({ id: "", x: 0, y: 0 })
-
-  let hasLoaded = false
-
-  const renderCursors = (mouse:any) => {        
-    let data = JSON.parse(mouse)
-    if(data && data.userId !== userId) {
-      return (
-        <Cursor point={[data.x, data.y]} />
-      )
-    }    
-  }
-
   useEffect(() => {
-    const existingNotes = getStorageItem('notes')    
-    if (!hasLoaded && existingNotes) {
+    const existingNotes = getStorageItem('notes')
+    if (existingNotes) {
       setNotes(existingNotes)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      hasLoaded = true
     }
-    socket.addEventListener("message", event=> {
-      if(event.data) {
-        //console.log(event)
-      }
-    })
-    socket.addEventListener("open", event => {  
+    socket.addEventListener("open", event => {
       console.log('websocket connection established')
     });
-    window.addEventListener("mousemove", (e) => {   
+
+    window.addEventListener("mousemove", (e) => {
       const { x, y } = e;
-      sendJsonMessageThrottled.current({userId: userId, x: x, y:y})
+      sendJsonMessageThrottled.current({ x: x, y: y, userId: userId })
     })
-    // Clean up event listeners    
-    
-  }, [])
+  }, [lastJsonMessage])
+
+  const moveNotes = (update: any) => {
+    if (update) {
+      const { x, y, text, id } = update;
+      const updatedNotes = notes.map(note => {
+        if (note.id === id) {
+          return {
+            ...note,
+            position: { x: x, y: y }
+          };
+        }
+        return note;
+      });
+      setStorageItem('notes', updatedNotes)
+    }
+  }
+
+  const updatedNotes = (update: any) => {
+    if (update) {
+      const { text, id } = update;
+      const updatedNotes = notes.map(note => {
+        if (note.id === id) {
+          return {
+            ...note,
+            text: text
+          };
+        }
+        return note;
+      });
+      console.log(JSON.stringify(updatedNotes))
+
+      setStorageItem('notes', updatedNotes)
+    }
+  }
 
   const addNote = (): void => {
     let id = uuidv4()
-    setNotes([
-      ...notes,
-      {
-        id: id,
-        randomColor: generateRandomHexColor(),
-        position: generateCardRandomPosition(),
-        text: '',
-      },
-    ])
-
+    const pos = { x: generateCardRandomPosition(), y: generateCardRandomPosition() }
     setStorageItem('notes', [
       ...notes,
       {
         id: id,
         randomColor: generateRandomHexColor(),
-        position: generateCardRandomPosition(),
+        position: pos,
         text: '',
       },
     ])
-    noteDB.set(id, {
-        id: id,
-        randomColor: generateRandomHexColor(),
-        position: generateCardRandomPosition(),
-        text: '',
-    })
-    sendJsonMessage({id:id, x:0, y: 0});
+    sendCardUpdatedThrottled.current({
+      event: 'card-added',
+      id: id,
+      randomColor: generateRandomHexColor(),
+      position: pos,
+      text: '',
+    });
   }
 
   const removeNote = (noteId: string): void => {
     console.log('card removed')
     const filteredNotes = notes.filter((item) => item.id !== noteId)
-    setNotes(filteredNotes)
     setStorageItem('notes', filteredNotes)
   }
-  
- const handleCardMoved = (id: string, e: any) => {  
-    const { x, y, card } = e;
-    setCardPosition({ x: x, y: y , card:card});
-    // Emit 'moveCard' event to the server
-    sendCardPositionThrottled.current({
-        x: e.clientX,
-        y: e.clientY,
-        card: card
+
+  const handleCardUpdated = (e: any) => {
+    const { x, y, text, id } = e;
+    sendJsonMessageThrottled.current({
+      x: x,
+      y: y,
+      id: id,
+      text: text,
+      event: 'card-updated'
     })
-    setDragging({id: id, x:x, y:y})
+
   };
+
+  const renderCursors = (mouse: any) => {
+    let data = JSON.parse(mouse)
+    if (data && data.userId !== userId) {
+      return (
+        <Cursor point={[data.x, data.y]} />
+      )
+    }
+  }
 
   return (
     <div className="app">
-      <Toolbar id='main-toolbar' addNote={addNote}/>
+      <Toolbar id='main-toolbar' addNote={addNote} />
       {notes.map((item) => (
         <Note
           key={item.id}
@@ -134,16 +142,13 @@ function App() {
           randomColor={item.randomColor}
           position={item.position}
           onClose={() => removeNote(item.id)}
-          existingNotes={notes}
           text={item.text}
-          onCardMoved={(e:any) => {              
-              handleCardMoved(item.id, e)
-            }
-          }
+          onCardMoved={moveNotes}
+          onCardTextChanged={updatedNotes}
         />
       ))}
-    
-      {renderCursors(lastJsonMessage)}
+
+      {/* {renderCursors(lastJsonMessage)} */}
     </div>
   )
 }

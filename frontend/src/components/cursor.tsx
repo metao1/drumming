@@ -5,7 +5,6 @@ import {useRef } from 'react'
 
 export function Cursor({ point }: { point: number[] }) {
   const rCursor = useRef<SVGSVGElement>(null)
-
   const animateCursor = React.useCallback((point: number[]) => {
     const elm = rCursor.current
     if (!elm) return
